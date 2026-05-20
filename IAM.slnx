@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="IAM.API/IAM.API.csproj" />
+  <Project Path="IAM.Application/IAM.Application.csproj" />
+  <Project Path="IAM.Domain/IAM.Domain.csproj" />
+  <Project Path="IAM.Infrastructure/IAM.Infrastructure.csproj" />
+</Solution>

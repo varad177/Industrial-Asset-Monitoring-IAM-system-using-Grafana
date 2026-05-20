@@ -1,0 +1,6 @@
+@IAM.API_HostAddress = http://localhost:5055
+
+GET {{IAM.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

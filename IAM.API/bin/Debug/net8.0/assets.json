@@ -1,0 +1,112 @@
+{
+  "assets": [
+    {
+      "assetId": "asset_1",
+      "assetName": "Boiler-1",
+      "signals": [
+        {
+          "signalId": "temp_101",
+          "signalName": "Temperature",
+          "unit": "°C",
+          "minValue": 70,
+          "maxValue": 90
+        },
+        {
+          "signalId": "pressure_102",
+          "signalName": "Pressure",
+          "unit": "Bar",
+          "minValue": 10,
+          "maxValue": 15
+        },
+        {
+          "signalId": "flow_103",
+          "signalName": "Flow Rate",
+          "unit": "m³/h",
+          "minValue": 50,
+          "maxValue": 120
+        }
+      ]
+    },
+    {
+      "assetId": "asset_2",
+      "assetName": "Turbine-1",
+      "signals": [
+        {
+          "signalId": "rpm_201",
+          "signalName": "RPM",
+          "unit": "RPM",
+          "minValue": 1400,
+          "maxValue": 1500
+        },
+        {
+          "signalId": "vibration_202",
+          "signalName": "Vibration",
+          "unit": "mm/s",
+          "minValue": 0.5,
+          "maxValue": 5.0
+        },
+        {
+          "signalId": "temp_203",
+          "signalName": "Bearing Temperature",
+          "unit": "°C",
+          "minValue": 55,
+          "maxValue": 85
+        }
+      ]
+    },
+    {
+      "assetId": "asset_3",
+      "assetName": "Compressor-1",
+      "signals": [
+        {
+          "signalId": "pressure_301",
+          "signalName": "Discharge Pressure",
+          "unit": "Bar",
+          "minValue": 6,
+          "maxValue": 12
+        },
+        {
+          "signalId": "temp_302",
+          "signalName": "Inlet Temperature",
+          "unit": "°C",
+          "minValue": 20,
+          "maxValue": 45
+        },
+        {
+          "signalId": "current_303",
+          "signalName": "Motor Current",
+          "unit": "A",
+          "minValue": 80,
+          "maxValue": 150
+        }
+      ]
+    },
+    {
+      "assetId": "asset_4",
+      "assetName": "Pump-1",
+      "signals": [
+        {
+          "signalId": "flow_401",
+          "signalName": "Flow Rate",
+          "unit": "L/min",
+          "minValue": 200,
+          "maxValue": 500
+        },
+        {
+          "signalId": "pressure_402",
+          "signalName": "Outlet Pressure",
+          "unit": "Bar",
+          "minValue": 3,
+          "maxValue": 8
+        },
+        {
+          "signalId": "temp_403",
+          "signalName": "Fluid Temperature",
+          "unit": "°C",
+          "minValue": 25,
+          "maxValue": 60
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "keys": [
+    {
+      "alg": "RS256",
+      "e": "AQAB",
+      "key_ops": [],
+      "kid": "grafana-jwt-key",
+      "kty": "RSA",
+      "n": "wrnAf4wB0giiYdZlq0tWt4_WDz1UjYm7ZwBERI207krveEuFBethgncyrsoJgCzr0Z3__Aoq1aWBdCRnPZqhTCMAG0tPgDStahc_MK0nq0I5vkI21-nZuRTdnIPZ7P4tsJSfsqy0DJD4xu1Db3HYJb0j5nhow_lOkVEODT_OWKINilpODEgZ8NMol5rDfScVi-Q4R9oIVv2RwSGzgEqaVx4PcLmaUu2tj3VyQCToNXwQ3q5THXlX-2s8N-eybCpLpziMhWFdNpssaJKy_QfiloUTVVLB6Zjy1q7ABp1sAlV6apsbsU54BSjrFHwnCBHSZWDaImi-llpSDeHG576j6Q",
+      "oth": [],
+      "use": "sig",
+      "x5c": []
+    }
+  ]
+}

@@ -1,0 +1,199 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: iam-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${DB_PASSWORD}"
+    ports:
+      - "1434:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - iam-net
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${DB_PASSWORD}" -Q "SELECT 1" -C
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: iam-influxdb
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: "${INFLUXDB_PASSWORD}"
+      DOCKER_INFLUXDB_INIT_ORG: iam-org
+      DOCKER_INFLUXDB_INIT_BUCKET: telemetry
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: "${INFLUXDB_TOKEN}"
+    ports:
+      - "8087:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+    networks:
+      - iam-net
+
+  # ── Step 1: run DB migrations before OpenFGA starts ──────────
+  openfga-migrate:
+    image: openfga/openfga:latest
+    container_name: iam-openfga-migrate
+    command: migrate
+    user: "0"
+    environment:
+      OPENFGA_DATASTORE_ENGINE: sqlite
+      OPENFGA_DATASTORE_URI: "file:///data/openfga.db"
+    volumes:
+      - openfga_data:/data
+    networks:
+      - iam-net
+    restart: "no"
+
+  # ── Step 2: OpenFGA server backed by persistent SQLite ────────
+  openfga:
+    image: openfga/openfga:latest
+    container_name: iam-openfga
+    command: run --playground-enabled --playground-addr 0.0.0.0:3000
+    user: "0"
+    environment:
+      OPENFGA_DATASTORE_ENGINE: sqlite
+      OPENFGA_DATASTORE_URI: "file:///data/openfga.db"
+
+      OPENFGA_LOG_FORMAT: json
+
+      OPENFGA_HTTP_ADDR: "0.0.0.0:8080"
+      OPENFGA_GRPC_ADDR: "0.0.0.0:8081"
+
+      OPENFGA_PLAYGROUND_APIS_URL: http://localhost:8080
+
+      # CORS
+      OPENFGA_HTTP_CORS_ALLOWED_ORIGINS: "http://localhost:3102"
+      OPENFGA_HTTP_CORS_ALLOWED_HEADERS: "*"
+      OPENFGA_HTTP_CORS_ALLOWED_METHODS: "*"
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "3102:3000"
+    volumes:
+      - openfga_data:/data
+    depends_on:
+      openfga-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=:8081"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - iam-net
+
+  # ── Step 3: one-shot init — idempotent, skips if already done ─
+  openfga-init:
+    image: curlimages/curl:latest
+    container_name: iam-openfga-init
+    depends_on:
+      openfga:
+        condition: service_healthy
+    volumes:
+      - openfga_data:/data
+      - ./openfga:/scripts:ro
+    entrypoint: ["/bin/sh", "/scripts/init-openfga.sh"]
+    networks:
+      - iam-net
+    restart: "no"
+
+  # ── API: reads store ID from shared volume, no .env needed ────
+  iam-api:
+    build:
+      context: .
+      dockerfile: IAM.API/Dockerfile
+    container_name: iam-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=IAM_AuthDB;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;"
+      Jwt__Issuer: "IAM.API"
+      Jwt__Audience: "IAM.ReactClient"
+      Jwt__SecretKey: "${JWT_SECRET}"
+      Jwt__AccessTokenExpiryMinutes: "60"
+      OpenFgaSettings__ApiUrl: "http://openfga:8080"
+      OpenFgaSettings__StoreId: "${OPENFGA_STORE_ID}"
+      InfluxDbSettings__Url: "http://influxdb:8086"
+      InfluxDbSettings__Token: "${INFLUXDB_TOKEN}"
+      InfluxDbSettings__Organization: "iam-org"
+      InfluxDbSettings__Bucket: "telemetry"
+    ports:
+      - "5500:5500"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      influxdb:
+        condition: service_started
+      openfga-init:
+        condition: service_completed_successfully
+    networks:
+      - iam-net
+    volumes:
+      - ./IAM.API/keys:/app/keys
+      - openfga_data:/data:ro
+      
+
+  grafana:
+    image: grafana/grafana:9.5.15
+    container_name: iam-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./IAM.API/keys:/etc/grafana/jwks:ro
+    depends_on:
+      - influxdb
+      - iam-api
+    networks:
+      - iam-net
+
+  iam-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: iam-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost/api}
+    networks:
+      - iam-net
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+  nginx:
+    image: nginx:alpine
+    container_name: iam-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - iam-api
+      - grafana
+      - iam-frontend
+    networks:
+      - iam-net
+
+volumes:
+  sqlserver_data:
+  influxdb_data:
+  influxdb_config:
+  grafana_data:
+  openfga_data:
+
+networks:
+  iam-net:
+    driver: bridge

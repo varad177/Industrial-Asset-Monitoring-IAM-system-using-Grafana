@@ -1,0 +1,15 @@
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\bin\Debug\net10.0\IAM.Application.deps.json
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\bin\Debug\net10.0\IAM.Application.dll
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\bin\Debug\net10.0\IAM.Application.pdb
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\bin\Debug\net10.0\IAM.Domain.dll
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\bin\Debug\net10.0\IAM.Domain.pdb
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net10.0\IAM.Application.csproj.AssemblyReference.cache
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net10.0\IAM.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net10.0\IAM.Application.AssemblyInfoInputs.cache
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net10.0\IAM.Application.AssemblyInfo.cs
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net10.0\IAM.Application.csproj.CoreCompileInputs.cache
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net10.0\IAM.Appl.5049C8E2.Up2Date
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net10.0\IAM.Application.dll
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net10.0\refint\IAM.Application.dll
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net10.0\IAM.Application.pdb
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net10.0\ref\IAM.Application.dll

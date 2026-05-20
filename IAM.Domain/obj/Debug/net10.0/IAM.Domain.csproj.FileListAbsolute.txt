@@ -1,0 +1,11 @@
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\bin\Debug\net10.0\IAM.Domain.deps.json
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\bin\Debug\net10.0\IAM.Domain.dll
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\bin\Debug\net10.0\IAM.Domain.pdb
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\obj\Debug\net10.0\IAM.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\obj\Debug\net10.0\IAM.Domain.AssemblyInfoInputs.cache
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\obj\Debug\net10.0\IAM.Domain.AssemblyInfo.cs
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\obj\Debug\net10.0\IAM.Domain.csproj.CoreCompileInputs.cache
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\obj\Debug\net10.0\IAM.Domain.dll
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\obj\Debug\net10.0\refint\IAM.Domain.dll
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\obj\Debug\net10.0\IAM.Domain.pdb
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\obj\Debug\net10.0\ref\IAM.Domain.dll
