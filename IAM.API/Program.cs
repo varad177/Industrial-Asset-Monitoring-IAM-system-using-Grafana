@@ -1,5 +1,4 @@
 using System.Text;
-using IAM.API.Auth;
 using IAM.API.Middleware;
 using IAM.Infrastructure;
 using IAM.Infrastructure.Services.Auth;
@@ -16,22 +15,8 @@ var builder = WebApplication.CreateBuilder(args);
 // ── Infrastructure layer (DB, Repos, Services) ───────────────
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// ── Authentication: JWT + Grafana API Key (PolicyScheme) ──────
-// The "Smart" policy scheme dynamically routes to either:
-//   - "GrafanaApiKey" if X-Grafana-Api-Key header is present
-//   - "Bearer" (JWT) for all other requests (cookie, Authorization header, etc.)
-builder.Services.AddAuthentication("Smart")
-    .AddPolicyScheme("Smart", "JWT or Grafana API Key", options =>
-    {
-        options.ForwardDefaultSelector = context =>
-        {
-            if (context.Request.Headers.ContainsKey("X-Grafana-Api-Key"))
-                return GrafanaApiKeyAuthHandler.SchemeName;
-            return JwtBearerDefaults.AuthenticationScheme;
-        };
-    })
-    .AddScheme<AuthenticationSchemeOptions, GrafanaApiKeyAuthHandler>(
-        GrafanaApiKeyAuthHandler.SchemeName, null)
+// ── Authentication: JWT (OAuth2) ──────────────────────────────
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         var tokenValidationParameters = new TokenValidationParameters
@@ -136,7 +121,7 @@ var app = builder.Build();
 // ─────────────────────────────────────────────────────────────
 
 app.UseMiddleware<ExceptionMiddleware>();
-app.UseMiddleware<GrafanaProxyMiddleware>();
+
 
 if (app.Environment.IsDevelopment())
 {
@@ -162,6 +147,7 @@ app.UseHttpsRedirection();
 app.UseCors("ReactApp");
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<GrafanaProxyMiddleware>();
 app.MapControllers();
 
 // ── Auto-apply migrations on startup ─────────────────────────

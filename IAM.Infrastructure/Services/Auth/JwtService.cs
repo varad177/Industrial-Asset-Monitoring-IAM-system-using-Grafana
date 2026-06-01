@@ -28,9 +28,32 @@ public class JwtService : IJwtService
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
+            new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Name, user.Username),
             new Claim(ClaimTypes.Role, user.Role),
             new Claim("roles", user.Role), // Grafana prefers 'roles' claim
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _config["Jwt:Issuer"],
+            audience: _config["Jwt:Audience"],
+            claims: claims,
+            expires: GetAccessTokenExpiry(),
+            signingCredentials: new SigningCredentials(signingKey, SecurityAlgorithms.RsaSha256)
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public string GenerateClientCredentialsToken(string clientId)
+    {
+        var signingKey = _rsaKeyService.GetPrivateKey();
+
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, clientId),
+            new Claim("client_id", clientId),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

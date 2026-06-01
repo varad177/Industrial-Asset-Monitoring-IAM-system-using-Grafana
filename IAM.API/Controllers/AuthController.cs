@@ -11,7 +11,38 @@ namespace IAM.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
-    public AuthController(IAuthService authService) => _authService = authService;
+    private readonly IJwtService _jwtService;
+    private readonly IConfiguration _config;
+
+    public AuthController(IAuthService authService, IJwtService jwtService, IConfiguration config)
+    {
+        _authService = authService;
+        _jwtService = jwtService;
+        _config = config;
+    }
+
+    /// <summary>OAuth2 Token Endpoint for machine-to-machine communication</summary>
+    [HttpPost("token")]
+    [Consumes("application/x-www-form-urlencoded")]
+    public IActionResult Token([FromForm] string grant_type, [FromForm] string client_id, [FromForm] string client_secret)
+    {
+        if (grant_type != "client_credentials")
+            return BadRequest(new { error = "unsupported_grant_type" });
+
+        var expectedSecret = _config["Grafana:ClientSecret"];
+        
+        if (client_id != _config["Grafana:ClientId"] || string.IsNullOrEmpty(expectedSecret) || client_secret != expectedSecret)
+            return Unauthorized(new { error = "invalid_client" });
+
+        var token = _jwtService.GenerateClientCredentialsToken(client_id);
+
+        return Ok(new
+        {
+            access_token = token,
+            token_type = "Bearer",
+            expires_in = 3600 // means 1 hour
+        });
+    }
 
     /// <summary>Register a new user account</summary>
     [HttpPost("register")]

@@ -30,6 +30,18 @@ public class FgaProxyController : ControllerBase
         _logger = logger;
     }
 
+    private string? GetTargetUser(string? requestedUser)
+    {
+        // If this is a machine-to-machine token (OAuth2 Client Credentials from Grafana)
+        if (User.HasClaim(c => c.Type == "client_id"))
+        {
+            return string.IsNullOrWhiteSpace(requestedUser) ? "grafana-system" : requestedUser;
+        }
+
+        // Otherwise, it's a normal user token, so use the requested user OR fallback to the token's email
+        return requestedUser ?? User.FindFirst(ClaimTypes.Email)?.Value;
+    }
+
     /// <summary>
     /// Check if a user has a specific relation on an object.
     /// Used by Grafana's Infinity datasource for authorization queries.
@@ -45,8 +57,7 @@ public class FgaProxyController : ControllerBase
         [FromQuery] string objectId = "",
         CancellationToken ct = default)
     {
-        // If no user specified, use the authenticated user's email
-        var targetUser = user ?? User.FindFirst(ClaimTypes.Email)?.Value;
+        var targetUser = GetTargetUser(user);
 
         if (string.IsNullOrWhiteSpace(targetUser))
             return BadRequest(new { message = "User identifier is required." });
@@ -77,7 +88,7 @@ public class FgaProxyController : ControllerBase
         [FromQuery] string assetId = "",
         CancellationToken ct = default)
     {
-        var targetUser = user ?? User.FindFirst(ClaimTypes.Email)?.Value;
+        var targetUser = GetTargetUser(user);
 
         if (string.IsNullOrWhiteSpace(targetUser) || string.IsNullOrWhiteSpace(assetId))
         {

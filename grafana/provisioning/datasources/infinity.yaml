@@ -9,11 +9,14 @@ datasources:
     isDefault: true
     editable: true
     jsonData:
-      httpMethod: GET
-      timeoutInSeconds: 60
-      httpHeaderName1: X-Grafana-Api-Key
+      auth_method: oauth2
+      oauthPassThru: false
+      oauth2:
+        oauth2_type: client_credentials
+        client_id: ${GRAFANA_CLIENT_ID}
+        token_url: http://iam-api:5500/api/auth/token
       allowedHosts:
         - http://iam-api:5500       
         - http://localhost:5500
     secureJsonData:
-      httpHeaderValue1: ${GRAFANA_API_KEY}
+      oauth2ClientSecret: ${GRAFANA_CLIENT_SECRET}

@@ -124,7 +124,8 @@ services:
       InfluxDbSettings__Token: "${INFLUXDB_TOKEN}"
       InfluxDbSettings__Organization: "iam-org"
       InfluxDbSettings__Bucket: "telemetry"
-      Grafana__ApiKey: "${GRAFANA_API_KEY}"
+      Grafana__ClientSecret: "${GRAFANA_CLIENT_SECRET}"
+      Grafana__ClientId: "${GRAFANA_CLIENT_ID}"
       AdminSettings__Email: "${ADMIN_EMAIL}"
       AdminSettings__Password: "${ADMIN_PASSWORD}"
       AdminSettings__Username: "${ADMIN_USERNAME}"
@@ -152,7 +153,7 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_INSTALL_PLUGINS: yesoreyeram-infinity-datasource
-      GRAFANA_API_KEY: ${GRAFANA_API_KEY}
+      GRAFANA_CLIENT_SECRET: ${GRAFANA_CLIENT_SECRET}
       GF_SECURITY_SECRET_KEY: ${GRAFANA_SECRET_KEY}
     ports:
       - "3000:3000"

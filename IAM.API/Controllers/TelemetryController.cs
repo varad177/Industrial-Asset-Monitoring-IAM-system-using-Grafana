@@ -36,10 +36,18 @@ public class TelemetryController : ControllerBase
 
     /// <summary>
     /// Get the authenticated user's email from ClaimsPrincipal.
-    /// Works seamlessly for both JWT (cookie/header) and Grafana API Key auth.
+    /// Works seamlessly for both User JWTs and Machine-to-Machine (Client Credentials) JWTs.
     /// </summary>
     private string? GetAuthenticatedUser()
     {
+        // If this is a machine-to-machine token (OAuth2 Client Credentials from Grafana)
+        if (User.HasClaim(c => c.Type == "client_id"))
+        {
+            var targetUser = Request.Query["user"].ToString();
+            return string.IsNullOrWhiteSpace(targetUser) ? "grafana-system" : targetUser;
+        }
+
+        // Otherwise, it's a normal user token
         return User.FindFirst(ClaimTypes.Email)?.Value
             ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? User.Identity?.Name;
