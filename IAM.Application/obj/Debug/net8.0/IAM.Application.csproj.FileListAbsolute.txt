@@ -13,3 +13,4 @@ C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net8.0\
 C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net8.0\refint\IAM.Application.dll
 C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net8.0\IAM.Application.pdb
 C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net8.0\ref\IAM.Application.dll
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Application\obj\Debug\net8.0\IAM.Application.sourcelink.json

@@ -10,5 +10,6 @@ public interface IUserRepository
     Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default);
     Task<bool> ExistsByUsernameAsync(string username, CancellationToken ct = default);
     Task AddAsync(User user, CancellationToken ct = default);
+    Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
     Task<RefreshToken?> GetRefreshTokenAsync(string token, CancellationToken ct = default);
 }

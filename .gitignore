@@ -1,0 +1,43 @@
+# Auto-generated RSA keys
+IAM.API/keys/
+keys/
+
+# C# / .NET
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+.dockerignore
+
+# Node (for frontend)
+node_modules/
+dist/
+.pnp
+.pnp.js
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

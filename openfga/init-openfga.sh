@@ -1,91 +1,177 @@
 #!/bin/sh
 
+set -e
+
 OPENFGA_URL="http://openfga:8080"
-STORE_ID_FILE="/data/store_id"
-MODEL_ID_FILE="/data/model_id"
 STORE_NAME="iam-monitor"
 
-# ── 1. Get or Create Store ────────────────────────────────────────────────────
-if [ -f "$STORE_ID_FILE" ]; then
-  STORE_ID=$(cat "$STORE_ID_FILE")
-  echo "✅ Using existing store: $STORE_ID"
+echo "⏳ Waiting for OpenFGA to become ready..."
+
+until curl -sf "$OPENFGA_URL/healthz" > /dev/null; do
+  echo "Waiting for OpenFGA..."
+  sleep 2
+done
+
+echo "✅ OpenFGA is ready"
+
+# ─────────────────────────────────────────────────────────────
+# 1. Find Existing Store or Create New One
+# ─────────────────────────────────────────────────────────────
+
+echo "🔍 Checking if store already exists..."
+
+EXISTING=$(curl -s "$OPENFGA_URL/stores")
+
+STORE_ID=$(echo "$EXISTING" | \
+  grep -o "\"id\":\"[^\"]*\",\"name\":\"$STORE_NAME\"" | \
+  head -n 1 | \
+  sed 's/"id":"\([^"]*\)","name":"[^"]*"/\1/')
+
+if [ -n "$STORE_ID" ]; then
+  echo "✅ Found existing store: $STORE_ID"
+
 else
-  # Check if store exists in OpenFGA
-  echo "🔍 Checking if store already exists in OpenFGA..."
-  EXISTING=$(curl -sf "$OPENFGA_URL/stores")
-  STORE_ID=$(echo "$EXISTING" | sed 's/.*"id":"\([^"]*\)","name":"iam-monitor".*/\1/')
+  echo "📦 Creating new store..."
 
-  if [ -n "$STORE_ID" ] && [ "$STORE_ID" != "$EXISTING" ]; then
-    echo "✅ Found existing store in OpenFGA: $STORE_ID"
-    echo "$STORE_ID" > "$STORE_ID_FILE"
-  else
-    echo "📦 Creating new store..."
-    STORE_RESPONSE=$(curl -sf -X POST "$OPENFGA_URL/stores" \
-      -H "Content-Type: application/json" \
-      -d '{"name":"iam-monitor"}')
+  STORE_RESPONSE=$(curl -s -X POST "$OPENFGA_URL/stores" \
+    -H "Content-Type: application/json" \
+    -d "{\"name\":\"$STORE_NAME\"}")
 
-    STORE_ID=$(echo "$STORE_RESPONSE" | sed 's/.*"id":"\([^"]*\)".*/\1/')
+  echo "Store Response: $STORE_RESPONSE"
 
-    if [ -z "$STORE_ID" ]; then
-      echo "❌ Failed to create store. Response: $STORE_RESPONSE"
-      exit 1
-    fi
+  STORE_ID=$(echo "$STORE_RESPONSE" | \
+    sed 's/.*"id":"\([^"]*\)".*/\1/')
 
-    echo "$STORE_ID" > "$STORE_ID_FILE"
-    echo "✅ Store created: $STORE_ID"
+  if [ -z "$STORE_ID" ]; then
+    echo "❌ Failed to create store"
+    exit 1
   fi
+
+  echo "✅ Store created: $STORE_ID"
 fi
 
-# ── 2. Always upload latest model (creates new version each time) ─────────────
+# ─────────────────────────────────────────────────────────────
+# 2. Upload Authorization Model (with team support)
+# ─────────────────────────────────────────────────────────────
+
 echo ""
 echo "📋 Uploading authorization model..."
-MODEL_RESPONSE=$(curl -sf -X POST "$OPENFGA_URL/stores/$STORE_ID/authorization-models" \
+
+MODEL_RESPONSE=$(curl -s -X POST \
+  "$OPENFGA_URL/stores/$STORE_ID/authorization-models" \
   -H "Content-Type: application/json" \
   -d @/scripts/model.json)
 
-MODEL_ID=$(echo "$MODEL_RESPONSE" | sed 's/.*"authorization_model_id":"\([^"]*\)".*/\1/')
+echo "Model Response: $MODEL_RESPONSE"
+
+MODEL_ID=$(echo "$MODEL_RESPONSE" | \
+  sed 's/.*"authorization_model_id":"\([^"]*\)".*/\1/')
 
 if [ -z "$MODEL_ID" ]; then
-  echo "❌ Failed to upload model. Response: $MODEL_RESPONSE"
+  echo "❌ Failed to upload model"
   exit 1
 fi
 
-# Save latest model ID
-echo "$MODEL_ID" > "$MODEL_ID_FILE"
 echo "✅ Model uploaded: $MODEL_ID"
 
-# ── 3. Seed tuples only on first run ─────────────────────────────────────────
-TUPLES_SEEDED_FILE="/data/tuples_seeded"
-
-if [ -f "$TUPLES_SEEDED_FILE" ]; then
-  echo "✅ Tuples already seeded — skipping"
-else
-  echo ""
-  echo "🌱 Seeding authorization tuples..."
-  curl -sf -X POST "$OPENFGA_URL/stores/$STORE_ID/write" \
-    -H "Content-Type: application/json" \
-    -d "{
-      \"writes\": {
-        \"tuple_keys\": [
-          { \"user\": \"user:admin\",           \"relation\": \"viewer\", \"object\": \"asset:asset_1\" },
-          { \"user\": \"user:admin\",           \"relation\": \"viewer\", \"object\": \"asset:asset_2\" },
-          { \"user\": \"user:admin\",           \"relation\": \"viewer\", \"object\": \"asset:asset_3\" },
-          { \"user\": \"user:admin\",           \"relation\": \"viewer\", \"object\": \"asset:asset_4\" },
-          { \"user\": \"user:admin\",           \"relation\": \"viewer\", \"object\": \"dashboard:iam-asset-telemetry\" },
-          { \"user\": \"user:varad@gmail.com\", \"relation\": \"viewer\", \"object\": \"asset:asset_1\" },
-          { \"user\": \"user:varad@gmail.com\", \"relation\": \"viewer\", \"object\": \"asset:asset_2\" },
-          { \"user\": \"user:varad@gmail.com\", \"relation\": \"viewer\", \"object\": \"dashboard:iam-asset-telemetry\" },
-          { \"user\": \"user:operator\",        \"relation\": \"viewer\", \"object\": \"asset:asset_3\" },
-          { \"user\": \"user:operator\",        \"relation\": \"viewer\", \"object\": \"dashboard:iam-asset-telemetry\" }
-        ]
-      }
-    }"
-
-  touch "$TUPLES_SEEDED_FILE"
-  echo "✅ Tuples seeded"
-fi
+# ─────────────────────────────────────────────────────────────
+# 3. Seed Team Structure (one-time bootstrap)
+#    All real user management is done via the Provisioning API.
+# ─────────────────────────────────────────────────────────────
 
 echo ""
-echo "🎉 OpenFGA initialisation complete!"
+echo "🌱 Seeding team structure tuples..."
+
+WRITE_RESPONSE=$(curl -s -X POST \
+  "$OPENFGA_URL/stores/$STORE_ID/write" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "writes": {
+      "tuple_keys": [
+        {
+          "user": "user:admin@gmail.com",
+          "relation": "member",
+          "object": "team:admins"
+        },
+        {
+          "user": "user:admin@localhost",
+          "relation": "member",
+          "object": "team:admins"
+        },
+
+        {
+          "user": "team:admins#member",
+          "relation": "viewer",
+          "object": "asset:asset_1"
+        },
+        {
+          "user": "team:admins#member",
+          "relation": "viewer",
+          "object": "asset:asset_2"
+        },
+        {
+          "user": "team:admins#member",
+          "relation": "viewer",
+          "object": "asset:asset_3"
+        },
+        {
+          "user": "team:admins#member",
+          "relation": "viewer",
+          "object": "asset:asset_4"
+        },
+        {
+          "user": "team:admins#member",
+          "relation": "viewer",
+          "object": "dashboard:iam-asset-telemetry"
+        },
+
+        {
+          "user": "team:operators#member",
+          "relation": "viewer",
+          "object": "asset:asset_1"
+        },
+        {
+          "user": "team:operators#member",
+          "relation": "viewer",
+          "object": "asset:asset_2"
+        },
+        {
+          "user": "team:operators#member",
+          "relation": "viewer",
+          "object": "dashboard:iam-asset-telemetry"
+        },
+
+        {
+          "user": "team:viewers#member",
+          "relation": "viewer",
+          "object": "dashboard:iam-asset-telemetry"
+        }
+      ]
+    }
+  }' || true)
+
+echo "Write Response: $WRITE_RESPONSE"
+
+if echo "$WRITE_RESPONSE" | grep -q "already exists"; then
+  echo "⚠️ Some tuples already exist — skipping duplicates"
+
+elif echo "$WRITE_RESPONSE" | grep -q "\"code\""; then
+  echo "⚠️ Non-fatal tuple response:"
+  echo "$WRITE_RESPONSE"
+
+else
+  echo "✅ Team structure seeded successfully"
+fi
+
+# ─────────────────────────────────────────────────────────────
+# Done
+# ─────────────────────────────────────────────────────────────
+
+echo ""
+echo "🎉 OpenFGA initialization complete!"
 echo "   Store ID : $STORE_ID"
 echo "   Model ID : $MODEL_ID"
+echo ""
+echo "   Teams seeded: admins, operators, viewers"
+echo "   Bootstrap admin: admin@gmail.com → team:admins"
+echo "   Use the Provisioning API to manage users and teams."

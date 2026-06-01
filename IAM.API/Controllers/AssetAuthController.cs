@@ -22,62 +22,29 @@ public class AssetAuthController : ControllerBase
 {
     private readonly IOpenFgaService _fga;
     private readonly IAssetConfigurationProvider _assetProvider;
-    private readonly RsaKeyService _rsaKeyService;
     private readonly ILogger<AssetAuthController> _logger;
 
-    // Grafana base URL — must point to Nginx which extracts the JWT
-    // private const string GrafanaBaseUrl = "http://localhost/grafana";
+  
     private const string TelemetryDashboardUid = "iam-asset-telemetry";
+    
 
     public AssetAuthController(
         IOpenFgaService fga,
         IAssetConfigurationProvider assetProvider,
-        RsaKeyService rsaKeyService,
         ILogger<AssetAuthController> logger)
     {
         _fga = fga;
         _assetProvider = assetProvider;
-        _rsaKeyService = rsaKeyService;
         _logger = logger;
     }
 
-    /// <summary>
-    /// Generates a short-lived JWT (30 seconds) specifically for Grafana iframe auth.
-    /// Even if someone copies the URL, the token expires almost immediately.
-    /// Grafana creates a session cookie on first load, so 30s is plenty.
-    /// </summary>
-    private string GenerateGrafanaJwt(string userId, string email, string name)
-    {
-        var signingKey = _rsaKeyService.GetPrivateKey();
-        var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.RsaSha256);
-
-        var claims = new[]
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, userId),
-            new Claim(JwtRegisteredClaimNames.Email, email),
-            new Claim("name", name),
-            new Claim("roles", "Viewer"),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-        };
-
-        var token = new JwtSecurityToken(
-            issuer: "IAM.API",
-            audience: "IAM.ReactClient",
-            claims: claims,
-            expires: DateTime.UtcNow.AddSeconds(60), // Short-lived! Only needs to survive the iframe load + session cookie creation
-            signingCredentials: credentials
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
 
     /// <summary>
     /// Get all assets the current user is authorized to view.
     /// Checks OpenFGA for viewer relation on each asset.
     /// </summary>
-    /// <response code="200">List of authorized assets.</response>
+    /// 
     [HttpGet("assets")]
-    [ProducesResponseType(typeof(IEnumerable<AuthorizedAssetDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAuthorizedAssets(CancellationToken ct)
     {
         var userId = GetUserId();
@@ -110,10 +77,7 @@ public class AssetAuthController : ControllerBase
     /// - Forwards to Grafana with X-JWT-Assertion header
     /// - Never exposes token in URL
     /// </summary>
-    /// <param name="assetId">The specific asset the user selected in React.</param>
-    /// <param name="from">Grafana time range start (e.g. now-1h). Default: now-30m</param>
-    /// <param name="to">Grafana time range end. Default: now</param>
-    /// <param name="ct">Cancellation token.</param>
+    
     [HttpGet("dashboards/asset_telemetry/url")]
 public async Task<IActionResult> GetDashboardUrl(
     [FromQuery] string assetId,
@@ -158,10 +122,10 @@ public async Task<IActionResult> GetDashboardUrl(
         });
 
     // Return DIRECT Grafana URL
-    // NGINX will inject JWT header automatically
+    // The API proxy will inject JWT header automatically
     var grafanaUrl =
-        $"http://localhost/grafana/d/{TelemetryDashboardUid}/{TelemetryDashboardUid}" +
-        $"?orgId=1&kiosk" +
+        $"http://localhost:5500/grafana/d/{TelemetryDashboardUid}/{TelemetryDashboardUid}" +
+        $"?orgId=1" +
         $"&from={Uri.EscapeDataString(from)}" +
         $"&to={Uri.EscapeDataString(to)}" +
         $"&var-assetId={Uri.EscapeDataString(assetId)}" +
@@ -180,29 +144,6 @@ public async Task<IActionResult> GetDashboardUrl(
     
     
     
-    /// <summary>
-    /// Check if the current user can access a specific asset.
-    /// Used for per-asset access validation before any data query.
-    /// </summary>
-    /// <param name="assetId">Asset to check access for.</param>
-    /// <param name="ct">Cancellation token.</param>
-    [HttpGet("assets/{assetId}/access")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> CheckAssetAccess(string assetId, CancellationToken ct)
-    {
-        var userId = GetUserId();
-        var allowed = await _fga.CheckAsync(userId, "viewer", "asset", assetId, ct);
-
-        if (!allowed)
-        {
-            _logger.LogWarning("User {UserId} denied access to asset {AssetId}", userId, assetId);
-            return Forbid();
-        }
-
-        return Ok(new { assetId, access = "granted" });
-    }
-
     // ── Helpers ───────────────────────────────────────────────
 
     /// <summary>
@@ -214,12 +155,13 @@ public async Task<IActionResult> GetDashboardUrl(
     {
         // Try email first (matches OpenFGA tuple user keys like "user:admin@company.com")
         var email = User.FindFirstValue(ClaimTypes.Email);
+        // here user is coming from jwt token and in jwt token we are using email as nameidentifier claim so we can directly use that as well instead of email claim
         if (!string.IsNullOrEmpty(email))
             return email;
 
         // Fallback to NameIdentifier
-        return User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue(ClaimTypes.Name)
+        return User.FindFirstValue(ClaimTypes.NameIdentifier) // name identifier is typically the user ID, but in our case we use email as name identifier claim in jwt token so this will also return email
+            ?? User.FindFirstValue(ClaimTypes.Name) // else name 
             ?? "unknown";
     }
 }

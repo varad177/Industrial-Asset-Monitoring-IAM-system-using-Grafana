@@ -55,6 +55,7 @@ public class RsaKeyService
     private void GenerateAndSaveKeys()
     {
         _rsa = RSA.Create(2048);
+        // we are using the 2048 bits key size which is considered secure for JWT signing, it provides a good balance between security and performance. For higher security requirements, you can use 4096 bits, but it will be slower to generate and sign tokens.
 
         var privateKeyPath = Path.Combine(_keyPath, PrivateKeyFileName);
         var publicKeyPath = Path.Combine(_keyPath, PublicKeyFileName);

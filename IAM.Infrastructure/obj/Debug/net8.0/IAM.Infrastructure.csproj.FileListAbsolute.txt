@@ -17,3 +17,4 @@ C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Infrastructure\obj\Debug\net8
 C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Infrastructure\obj\Debug\net8.0\IAM.Infrastructure.pdb
 C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Infrastructure\obj\Debug\net8.0\IAM.Infrastructure.genruntimeconfig.cache
 C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Infrastructure\obj\Debug\net8.0\ref\IAM.Infrastructure.dll
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Infrastructure\obj\Debug\net8.0\IAM.Infrastructure.sourcelink.json

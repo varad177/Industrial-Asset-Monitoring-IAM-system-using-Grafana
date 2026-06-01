@@ -1,3 +1,5 @@
+using IAM.Application.DTOs.Provisioning;
+
 namespace IAM.Application.Interfaces;
 
 /// <summary>
@@ -24,4 +26,33 @@ public interface IOpenFgaService
     /// Useful for seeding permissions from code.
     /// </summary>
     Task WriteTupleAsync(string userId, string relation, string objectType, string objectId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Delete a tuple revoking a user's relation on an object.
+    /// </summary>
+    Task DeleteTupleAsync(string user, string relation, string objectType, string objectId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Read tuples matching a filter. Returns raw OpenFGA tuples.
+    /// </summary>
+    Task<IReadOnlyList<TupleDto>> ReadTuplesAsync(string? user, string? relation, string? objectType, string? objectId, CancellationToken ct = default);
+
+    /// <summary>Add a user to a team (writes user:{email} → member → team:{teamName}).</summary>
+    Task AddUserToTeamAsync(string userEmail, string teamName, CancellationToken ct = default);
+
+    /// <summary>Remove a user from a team.</summary>
+    Task RemoveUserFromTeamAsync(string userEmail, string teamName, CancellationToken ct = default);
+
+    /// <summary>Get all member emails of a team.</summary>
+    Task<IReadOnlyList<string>> GetTeamMembersAsync(string teamName, CancellationToken ct = default);
+
+    /// <summary>Get all team names a user belongs to.</summary>
+    Task<IReadOnlyList<string>> GetUserTeamsAsync(string userEmail, CancellationToken ct = default);
+
+    /// <summary>Grant a team viewer access to an asset or dashboard.</summary>
+    Task GrantTeamAccessAsync(string teamName, string relation, string objectType, string objectId, CancellationToken ct = default);
+
+    /// <summary>Revoke a team's access from an asset or dashboard.</summary>
+    Task RevokeTeamAccessAsync(string teamName, string relation, string objectType, string objectId, CancellationToken ct = default);
 }
+

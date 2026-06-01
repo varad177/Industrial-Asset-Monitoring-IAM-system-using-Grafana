@@ -107,74 +107,98 @@ public sealed class InfluxDbService : IInfluxDbService, IDisposable
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<AggregatedTelemetryDto>> QueryAggregatedTelemetryAsync(
-        string assetId,
-        string aggregation,
-        string interval,
-        DateTime? from = null,
-        DateTime? to = null,
-        string? signalId = null,
-        CancellationToken ct = default)
+    string assetId,
+    string aggregation,
+    string interval,
+    DateTime? from = null,
+    DateTime? to = null,
+    string? signalId = null,
+    CancellationToken ct = default)
+{
+    var validAggregations = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "avg", "min", "max", "sum" };
+    if (!validAggregations.Contains(aggregation))
+        throw new ArgumentException($"Unsupported aggregation: {aggregation}. Supported: avg, min, max, sum.");
+
+    // Map user-friendly names to Flux aggregation functions
+    var fluxAggFn = aggregation.ToLowerInvariant() switch
     {
-        var validAggregations = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "avg", "min", "max", "sum" };
-        if (!validAggregations.Contains(aggregation))
-            throw new ArgumentException($"Unsupported aggregation: {aggregation}. Supported: avg, min, max, sum.");
+        "avg" => "mean",
+        "min" => "min",
+        "max" => "max",
+        "sum" => "sum",
+        _ => "mean"
+    };
 
-        // Map user-friendly names to Flux aggregation functions
-        var fluxAggFn = aggregation.ToLowerInvariant() switch
+    var rangeStart = from?.ToUniversalTime().ToString("o") ?? "-1h";
+    var rangeStop = to != null ? $", stop: {to.Value.ToUniversalTime():o}" : string.Empty;
+
+    // ─── Build signal filter (single or multi CSV) ───────────────────────────
+    var signalFilter = string.Empty;
+
+    if (!string.IsNullOrWhiteSpace(signalId))
+    {
+        var signals = signalId
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (signals.Length == 1)
         {
-            "avg" => "mean",
-            "min" => "min",
-            "max" => "max",
-            "sum" => "sum",
-            _ => "mean"
-        };
-
-        var rangeStart = from?.ToUniversalTime().ToString("o") ?? "-1h";
-        var rangeStop = to != null ? $", stop: {to.Value.ToUniversalTime():o}" : string.Empty;
-
-        var signalFilter = string.IsNullOrWhiteSpace(signalId)
-            ? string.Empty
-            : $"|> filter(fn: (r) => r[\"signalId\"] == \"{signalId}\")";
-
-        var flux = $"""
-            from(bucket: "{_settings.Bucket}")
-              |> range(start: {rangeStart}{rangeStop})
-              |> filter(fn: (r) => r["_measurement"] == "{MeasurementName}")
-              |> filter(fn: (r) => r["assetId"] == "{assetId}")
-              {signalFilter}
-              |> filter(fn: (r) => r["_field"] == "value")
-              |> aggregateWindow(every: {interval}, fn: {fluxAggFn}, createEmpty: false)
-              |> yield(name: "{fluxAggFn}")
-            """;
-
-        _logger.LogDebug("Executing aggregated Flux query: {Query}", flux);
-
-        var queryApi = _client.GetQueryApi();
-        var tables = await queryApi.QueryAsync(flux, _settings.Organization, ct);
-
-        var results = new List<AggregatedTelemetryDto>();
-
-        foreach (var table in tables)
-        {
-            foreach (var record in table.Records)
-            {
-                results.Add(new AggregatedTelemetryDto(
-                    Timestamp: record.GetTimeInDateTime()!.Value,
-                    AssetId: record.GetValueByKey("assetId")?.ToString() ?? assetId,
-                    SignalId: record.GetValueByKey("signalId")?.ToString() ?? string.Empty,
-                    Value: Convert.ToDouble(record.GetValue()),
-                    Aggregation: aggregation.ToLowerInvariant(),
-                    Interval: interval));
-            }
+            // Single signal — simple equality
+            signalFilter = $"|> filter(fn: (r) => r[\"signalId\"] == \"{signals[0]}\")";
         }
+        else
+        {
+            // Multiple signals — OR condition
+            var conditions = string.Join(" or ",
+                signals.Select(s => $"r[\"signalId\"] == \"{s}\""));
+            signalFilter = $"|> filter(fn: (r) => {conditions})";
+        }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
-        _logger.LogInformation(
-            "Aggregated query returned {Count} records — {Agg}/{Interval} for asset {AssetId}",
-            results.Count, aggregation, interval, assetId);
+    // ─── Clamp sub-minute intervals to 1m for InfluxDB stability ─────────────
+    var safeInterval = interval.EndsWith("s") ? "1m" : interval;
+    // ─────────────────────────────────────────────────────────────────────────
 
-        return results;
+    var flux = $"""
+        from(bucket: "{_settings.Bucket}")
+          |> range(start: {rangeStart}{rangeStop})
+          |> filter(fn: (r) => r["_measurement"] == "{MeasurementName}")
+          |> filter(fn: (r) => r["assetId"] == "{assetId}")
+          {signalFilter}
+          |> filter(fn: (r) => r["_field"] == "value")
+          |> aggregateWindow(every: {safeInterval}, fn: {fluxAggFn}, createEmpty: false)
+          |> yield(name: "{fluxAggFn}")
+        """;
+
+    _logger.LogDebug("Executing aggregated Flux query: {Query}", flux);
+
+    var queryApi = _client.GetQueryApi();
+    var tables = await queryApi.QueryAsync(flux, _settings.Organization, ct);
+
+    var results = new List<AggregatedTelemetryDto>();
+
+    foreach (var table in tables)
+    {
+        foreach (var record in table.Records)
+        {
+            results.Add(new AggregatedTelemetryDto(
+                Timestamp: record.GetTimeInDateTime()!.Value,
+                AssetId: record.GetValueByKey("assetId")?.ToString() ?? assetId,
+                SignalId: record.GetValueByKey("signalId")?.ToString() ?? string.Empty,
+                Value: Convert.ToDouble(record.GetValue()),
+                Aggregation: aggregation.ToLowerInvariant(),
+                Interval: safeInterval));
+        }
     }
 
+    _logger.LogInformation(
+        "Aggregated query returned {Count} records — {Agg}/{Interval} for asset {AssetId}, Signals: {Signals}",
+        results.Count, aggregation, safeInterval, assetId, signalId ?? "all");
+
+    return results;
+}
+    
+    
     public void Dispose()
     {
         _client.Dispose();

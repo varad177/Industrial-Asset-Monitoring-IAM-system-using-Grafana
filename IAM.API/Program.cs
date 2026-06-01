@@ -1,19 +1,37 @@
 using System.Text;
+using IAM.API.Auth;
 using IAM.API.Middleware;
 using IAM.Infrastructure;
 using IAM.Infrastructure.Services.Auth;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 // using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
+using IAM.Domain.Entities;
+using IAM.Application.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Infrastructure layer (DB, Repos, Services) ───────────────
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// ── JWT Authentication with RSA ────────────────────────────────
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+// ── Authentication: JWT + Grafana API Key (PolicyScheme) ──────
+// The "Smart" policy scheme dynamically routes to either:
+//   - "GrafanaApiKey" if X-Grafana-Api-Key header is present
+//   - "Bearer" (JWT) for all other requests (cookie, Authorization header, etc.)
+builder.Services.AddAuthentication("Smart")
+    .AddPolicyScheme("Smart", "JWT or Grafana API Key", options =>
+    {
+        options.ForwardDefaultSelector = context =>
+        {
+            if (context.Request.Headers.ContainsKey("X-Grafana-Api-Key"))
+                return GrafanaApiKeyAuthHandler.SchemeName;
+            return JwtBearerDefaults.AuthenticationScheme;
+        };
+    })
+    .AddScheme<AuthenticationSchemeOptions, GrafanaApiKeyAuthHandler>(
+        GrafanaApiKeyAuthHandler.SchemeName, null)
     .AddJwtBearer(options =>
     {
         var tokenValidationParameters = new TokenValidationParameters
@@ -118,6 +136,7 @@ var app = builder.Build();
 // ─────────────────────────────────────────────────────────────
 
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseMiddleware<GrafanaProxyMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -151,6 +170,23 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider
         .GetRequiredService<IAM.Infrastructure.Persistence.AppDbContext>();
     db.Database.EnsureCreated();
+
+    // Read admin credentials from configuration
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var adminEmail = config["AdminSettings:Email"] ?? "admin@gmail.com";
+    var adminPassword = config["AdminSettings:Password"] ?? "Admin@123456";
+    var adminUsername = config["AdminSettings:Username"] ?? "admin";
+    var adminRole = config["AdminSettings:Role"] ?? "Admin";
+
+    // Seed admin if not present
+    if (!db.Users.Any(u => u.Email == adminEmail))
+    {
+        var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+        var hash = hasher.Hash(adminPassword);
+        var admin = User.Create(adminUsername, adminEmail, hash, adminRole);
+        db.Users.Add(admin);
+        db.SaveChanges();
+    }
 }
 
 app.Run();

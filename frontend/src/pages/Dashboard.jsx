@@ -13,7 +13,7 @@ const TIME_RANGES = [
 ];
 
 export default function Dashboard() {
-  const { user, logout } = useAuthContext();
+  const { user, logout, setPage } = useAuthContext();
 
   // ── Asset state ──────────────────────────────────────────────
   const [assets, setAssets] = useState([]);
@@ -117,6 +117,21 @@ export default function Dashboard() {
             </svg>
             <span className={styles.sideLogoText}>IAM Monitor</span>
           </div>
+
+          {/* Navigation (Admin only) */}
+          {user?.role?.toLowerCase() === "admin" && (
+            <div className={styles.navSection}>
+              <div className={styles.navLabel}>Navigation</div>
+              <div className={styles.navLinks}>
+                <button className={`${styles.navLink} ${styles.navLinkActive}`}>
+                  📡 Dashboard
+                </button>
+                <button className={styles.navLink} onClick={() => setPage("admin")}>
+                  ⚙️ Admin Panel
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Asset Selector — the main filter */}
           <div className={styles.assetSection}>

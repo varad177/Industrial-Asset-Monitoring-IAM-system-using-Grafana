@@ -1,0 +1,19 @@
+apiVersion: 1
+
+datasources:
+  - name: Infinity-IAM
+    type: yesoreyeram-infinity-datasource
+    uid: infinity-iam
+    access: proxy
+    url: http://iam-api:5500
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: GET
+      timeoutInSeconds: 60
+      httpHeaderName1: X-Grafana-Api-Key
+      allowedHosts:
+        - http://iam-api:5500       
+        - http://localhost:5500
+    secureJsonData:
+      httpHeaderValue1: ${GRAFANA_API_KEY}

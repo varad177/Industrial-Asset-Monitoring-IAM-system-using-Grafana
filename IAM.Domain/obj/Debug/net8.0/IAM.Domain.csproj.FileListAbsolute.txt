@@ -9,3 +9,4 @@ C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\obj\Debug\net8.0\IAM.D
 C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\obj\Debug\net8.0\refint\IAM.Domain.dll
 C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\obj\Debug\net8.0\IAM.Domain.pdb
 C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\obj\Debug\net8.0\ref\IAM.Domain.dll
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.Domain\obj\Debug\net8.0\IAM.Domain.sourcelink.json

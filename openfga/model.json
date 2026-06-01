@@ -5,6 +5,23 @@
       "type": "user"
     },
     {
+      "type": "team",
+      "relations": {
+        "member": {
+          "this": {}
+        }
+      },
+      "metadata": {
+        "relations": {
+          "member": {
+            "directly_related_user_types": [
+              { "type": "user" }
+            ]
+          } 
+        }
+      }
+    },
+    {
       "type": "asset",
       "relations": {
         "viewer": {
@@ -15,7 +32,8 @@
         "relations": {
           "viewer": {
             "directly_related_user_types": [
-              { "type": "user" }
+              { "type": "user" },
+              { "type": "team", "relation": "member" }
             ]
           }
         }
@@ -32,7 +50,8 @@
         "relations": {
           "viewer": {
             "directly_related_user_types": [
-              { "type": "user" }
+              { "type": "user" },
+              { "type": "team", "relation": "member" }
             ]
           }
         }

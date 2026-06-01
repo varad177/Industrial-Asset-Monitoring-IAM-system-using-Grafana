@@ -89,3 +89,4 @@ C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.API\obj\Debug\net8.0\IAM.API.
 C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.API\obj\Debug\net8.0\IAM.API.genruntimeconfig.cache
 C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.API\obj\Debug\net8.0\ref\IAM.API.dll
 C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.API\bin\Debug\net8.0\keys\jwks.json
+C:\Users\Varad Dhumale\Desktop\grafana\backend\IAM.API\obj\Debug\net8.0\IAM.API.sourcelink.json

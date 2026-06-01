@@ -35,6 +35,13 @@ public class User : BaseEntity
         SetUpdatedAt();
     }
 
+    public void SetRole(string role)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(role);
+        Role = role;
+        SetUpdatedAt();
+    }
+
     public void Deactivate()
     {
         IsActive = false;

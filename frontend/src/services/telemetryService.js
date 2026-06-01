@@ -1,20 +1,21 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5055/api";
+import apiClient from "./apiClient";
 
-const handle = async (res) => {
-  const data = await res.json();
-  if (!res.ok) throw data;
-  return data;
-};
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5500/api";
 
 export const telemetryService = {
+  /**
+   * Get all assets regardless of authorization (for admin provisioning).
+   * Returns: [{ assetId, assetName, signalCount }]
+   */
+  getAllAssets: () =>
+    apiClient(`${BASE_URL}/telemetry/assets`),
+
   /**
    * Get all assets the user is authorized to view (OpenFGA filtered).
    * Returns: [{ assetId, assetName, signalCount }]
    */
   getAuthorizedAssets: () =>
-    fetch(`${BASE_URL}/assets`, {
-      credentials: "include", // Send JWT cookie with request
-    }).then(handle),
+    apiClient(`${BASE_URL}/assets`),
 
   /**
    * Get the Grafana iframe URL for ONE specific asset.
@@ -26,13 +27,10 @@ export const telemetryService = {
    * @param {string} to - Grafana time range end (e.g. "now")
    */
   getDashboardUrl: (assetId, from = "now-30m", to = "now") =>
-    fetch(
+    apiClient(
       `${BASE_URL}/dashboards/asset_telemetry/url` +
         `?assetId=${encodeURIComponent(assetId)}` +
         `&from=${encodeURIComponent(from)}` +
-        `&to=${encodeURIComponent(to)}`,
-      { 
-        credentials: "include" // Send JWT cookie with request
-      }
-    ).then(handle),
+        `&to=${encodeURIComponent(to)}`
+    ),
 };

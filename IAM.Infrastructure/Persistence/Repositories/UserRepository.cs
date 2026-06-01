@@ -34,6 +34,11 @@ public class UserRepository : IUserRepository
     public async Task AddAsync(User user, CancellationToken ct = default)
         => await _context.Users.AddAsync(user, ct);
 
+    public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default)
+        => await _context.Users
+            .Include(u => u.RefreshTokens)
+            .ToListAsync(ct);
+
     public async Task<RefreshToken?> GetRefreshTokenAsync(string token, CancellationToken ct = default)
         => await _context.RefreshTokens
             .FirstOrDefaultAsync(r => r.Token == token, ct);
