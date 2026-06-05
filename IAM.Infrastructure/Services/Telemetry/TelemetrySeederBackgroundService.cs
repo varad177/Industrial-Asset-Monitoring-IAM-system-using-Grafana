@@ -78,41 +78,78 @@ public sealed class TelemetrySeederBackgroundService : BackgroundService
     /// Generates one data point per signal using a random-walk approach
     /// that keeps values within the configured min/max bounds.
     /// </summary>
-    private List<TelemetryRecord> GenerateTelemetryBatch()
+   private int _tickCount = 0;
+
+private List<TelemetryRecord> GenerateTelemetryBatch()
+{
+    var now = DateTime.UtcNow;
+    var records = new List<TelemetryRecord>();
+    _tickCount++;
+
+    foreach (var asset in _assetProvider.GetAllAssets())
     {
-        var now = DateTime.UtcNow;
-        var records = new List<TelemetryRecord>();
-
-        foreach (var asset in _assetProvider.GetAllAssets())
+        foreach (var signal in asset.Signals)
         {
-            foreach (var signal in asset.Signals)
+            var key = $"{asset.AssetId}:{signal.SignalId}";
+            var range = signal.MaxValue - signal.MinValue;
+            double finalValue;
+
+            if (signal.SignalId.StartsWith("rpm"))
             {
-                var key = $"{asset.AssetId}:{signal.SignalId}";
-                var range = signal.MaxValue - signal.MinValue;
-
-                // Random walk: drift ±3% of range
-                var drift = (_random.NextDouble() - 0.5) * 2.0 * range * 0.03;
-                var currentValue = _currentValues[key] + drift;
-
-                // Clamp within bounds
-                currentValue = Math.Clamp(currentValue, signal.MinValue, signal.MaxValue);
-
-                // Add slight noise for realism (±0.5% of range)
-                var noise = (_random.NextDouble() - 0.5) * range * 0.005;
-                var finalValue = Math.Clamp(currentValue + noise, signal.MinValue, signal.MaxValue);
-
-                _currentValues[key] = currentValue; // store without noise for next iteration
-
-                records.Add(new TelemetryRecord
-                {
-                    Timestamp = now,
-                    AssetId = asset.AssetId,
-                    SignalId = signal.SignalId,
-                    Value = Math.Round(finalValue, 2)
-                });
+                // Sine wave — smooth turbine RPM oscillation
+                finalValue = signal.MinValue + (range / 2.0)
+                           + (range * 0.35) * Math.Sin(_tickCount * 0.04)
+                           + (_random.NextDouble() - 0.5) * range * 0.01;
             }
-        }
+            else if (signal.SignalId.StartsWith("vibration"))
+            {
+                // Noisy — high-frequency jitter
+                finalValue = signal.MinValue + range * 0.3
+                           + (_random.NextDouble()) * range * 0.5;
+            }
+            else if (signal.SignalId.StartsWith("pressure"))
+            {
+                // Very steady — small noise only
+                var prev = _currentValues[key];
+                finalValue = Math.Clamp(prev + (_random.NextDouble() - 0.5) * range * 0.008,
+                                        signal.MinValue, signal.MaxValue);
+            }
+            else if (signal.SignalId.StartsWith("current"))
+            {
+                // Step changes occasionally — motor current surges
+                var prev = _currentValues[key];
+                var spike = (_random.NextDouble() < 0.05) ? range * 0.15 * (_random.NextDouble() - 0.3) : 0;
+                finalValue = Math.Clamp(prev + (_random.NextDouble() - 0.5) * range * 0.02 + spike,
+                                        signal.MinValue, signal.MaxValue);
+            }
+            else if (signal.SignalId.StartsWith("flow"))
+            {
+                // Slow sine + drift — natural flow variation
+                var prev = _currentValues[key];
+                var sineComponent = Math.Sin(_tickCount * 0.02) * range * 0.1;
+                var drift = (_random.NextDouble() - 0.5) * range * 0.015;
+                finalValue = Math.Clamp(signal.MinValue + range * 0.5 + sineComponent + drift,
+                                        signal.MinValue, signal.MaxValue);
+            }
+            else // temp and others — slow random walk
+            {
+                var prev = _currentValues[key];
+                finalValue = Math.Clamp(prev + (_random.NextDouble() - 0.5) * range * 0.012,
+                                        signal.MinValue, signal.MaxValue);
+            }
 
-        return records;
+            _currentValues[key] = finalValue;
+
+            records.Add(new TelemetryRecord
+            {
+                Timestamp = now,
+                AssetId   = asset.AssetId,
+                SignalId  = signal.SignalId,
+                Value     = Math.Round(finalValue, 2)
+            });
+        }
     }
+
+    return records;
+}
 }
