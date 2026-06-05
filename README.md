@@ -2,6 +2,10 @@
 
 An enterprise-grade Industrial Asset Monitoring platform built to demonstrate advanced identity, telemetry, and Relationship-Based Access Control (ReBAC). The system securely collects, aggregates, and visualizes IoT telemetry data for industrial assets while enforcing strict, fine-grained access policies using OpenFGA.
 
+## 🌟 Architectural Diagram
+<img width="1553" height="1013" alt="ChatGPT Image May 29, 2026, 10_49_18 AM" src="https://github.com/user-attachments/assets/5cafe1b3-1896-405e-9fd6-123d3b99bd3e" />
+
+
 ## 🌟 Key Features
 
 * **Real-time Telemetry Visualization:** Embedded Grafana dashboards with customized, responsive UI integration via React.
